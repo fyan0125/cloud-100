@@ -4,18 +4,28 @@
 
     <!-- Figma 連結設定 -->
     <div class="section">
-      <h2>Figma Slides 連結</h2>
+      <h2>Figma Embed 設定</h2>
       <div class="figma-input">
         <input
           v-model="figmaUrl"
           type="text"
-          placeholder="貼上 Figma 連結..."
+          placeholder="貼上 Figma 連結（presenter / proto / design）..."
           @input="sendFigmaUrl"
         />
+      </div>
+      <div class="figma-input" style="margin-top: 8px;">
+        <input
+          v-model="figmaClientId"
+          type="text"
+          placeholder="Figma OAuth Client ID（用於 Embed API 控制換頁）"
+          @input="sendFigmaUrl"
+        />
+        <small class="hint">至 <a href="https://www.figma.com/developers/apps" target="_blank">Figma Developer</a> 建立 App 取得 Client ID</small>
       </div>
       <div class="slide-nav">
         <button class="nav-btn" @click="navigateSlide('prev')">&#9664; 上一頁</button>
         <button class="nav-btn" @click="navigateSlide('next')">下一頁 &#9654;</button>
+        <button class="nav-btn" @click="restartSlide()">重置</button>
       </div>
     </div>
 
@@ -119,6 +129,7 @@ const teams = ref([
 ])
 
 const figmaUrl = ref('')
+const figmaClientId = ref('')
 const scoreboardVisible = ref(true)
 const scoreboardWidth = ref(280)
 
@@ -137,12 +148,19 @@ function sendScores() {
 }
 
 function sendFigmaUrl() {
-  channel.postMessage({ type: 'update-figma', data: figmaUrl.value })
+  channel.postMessage({
+    type: 'update-figma',
+    data: { url: figmaUrl.value, clientId: figmaClientId.value },
+  })
   saveState()
 }
 
 function navigateSlide(direction) {
   channel.postMessage({ type: 'navigate-slide', data: direction })
+}
+
+function restartSlide() {
+  channel.postMessage({ type: 'restart-slide' })
 }
 
 function sendVisibility() {
@@ -231,6 +249,7 @@ function saveState() {
     JSON.stringify({
       teams: teams.value,
       figmaUrl: figmaUrl.value,
+      figmaClientId: figmaClientId.value,
       scoreboardVisible: scoreboardVisible.value,
       scoreboardWidth: scoreboardWidth.value,
       nextId,
@@ -251,6 +270,7 @@ onMounted(() => {
       }))
     }
     if (state.figmaUrl) figmaUrl.value = state.figmaUrl
+    if (state.figmaClientId) figmaClientId.value = state.figmaClientId
     if (state.scoreboardVisible !== undefined) scoreboardVisible.value = state.scoreboardVisible
     if (state.scoreboardWidth) scoreboardWidth.value = state.scoreboardWidth
     if (state.nextId) nextId = state.nextId
@@ -294,6 +314,17 @@ h1 {
   border-radius: 8px;
   font-size: 0.95rem;
   box-sizing: border-box;
+}
+
+.hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.hint a {
+  color: #3498db;
 }
 
 .slide-nav {

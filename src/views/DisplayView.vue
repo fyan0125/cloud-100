@@ -28,14 +28,14 @@
     <!-- 右側 Figma Slides -->
     <div class="slide-area">
       <iframe
-        v-if="figmaUrl"
+        v-if="figmaEmbedUrl"
         ref="figmaIframe"
         :src="figmaEmbedUrl"
         class="figma-iframe"
         allowfullscreen
       ></iframe>
       <div v-else class="placeholder">
-        <p>請在控制器中輸入 Figma 連結</p>
+        <p>請在控制器中輸入 Figma 連結與 Client ID</p>
       </div>
     </div>
 
@@ -60,6 +60,7 @@ const teams = ref([
 ])
 
 const figmaUrl = ref('')
+const figmaClientId = ref('')
 const figmaIframe = ref(null)
 const scoreboardVisible = ref(true)
 const scoreboardWidth = ref(280)
@@ -67,11 +68,41 @@ const timerSeconds = ref(0)
 const timerRunning = ref(false)
 const showTimerEnd = ref(false)
 
+// 將使用者貼的 Figma URL 轉成 Embed API 格式
 const figmaEmbedUrl = computed(() => {
   if (!figmaUrl.value) return ''
-  const encoded = encodeURIComponent(figmaUrl.value)
-  return `https://www.figma.com/embed?embed_host=share&hide-ui=1&url=${encoded}`
+  // 沒有 clientId 就用舊的 embed 方式（不支援換頁控制）
+  if (!figmaClientId.value) {
+    const encoded = encodeURIComponent(figmaUrl.value)
+    return `https://www.figma.com/embed?embed_host=share&url=${encoded}`
+  }
+  // 有 clientId：轉成 embed.figma.com/proto/ 格式
+  return buildFigmaEmbedApiUrl(figmaUrl.value, figmaClientId.value)
 })
+
+function buildFigmaEmbedApiUrl(url, clientId) {
+  try {
+    const u = new URL(url)
+    // 支援多種 Figma URL 格式: /presenter/, /proto/, /design/, /slides/
+    const match = u.pathname.match(/\/(presenter|proto|design|slides)\/([a-zA-Z0-9]+)/)
+    if (!match) {
+      // fallback: 用舊的 embed 方式
+      const encoded = encodeURIComponent(url)
+      return `https://www.figma.com/embed?embed_host=share&url=${encoded}&client-id=${clientId}`
+    }
+    const fileKey = match[2]
+    // 取得 node-id 等參數
+    const nodeId = u.searchParams.get('node-id') || ''
+    const params = new URLSearchParams({
+      'embed-host': location.hostname,
+      'client-id': clientId,
+    })
+    if (nodeId) params.set('node-id', nodeId)
+    return `https://embed.figma.com/proto/${fileKey}/?${params.toString()}`
+  } catch {
+    return ''
+  }
+}
 
 function teamCardStyle(color) {
   return {
@@ -85,7 +116,6 @@ function onBeforeEnter(el) {
 }
 
 function onEnter(el, done) {
-  // force reflow
   void el.offsetHeight
   el.style.transition = 'margin-left 0.4s ease, opacity 0.4s ease'
   el.style.marginLeft = '0'
@@ -106,6 +136,7 @@ function formatTime(s) {
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
+const FIGMA_ORIGIN = 'https://www.figma.com'
 const channel = new BroadcastChannel('cloud100')
 
 function handleMessage(event) {
@@ -113,7 +144,12 @@ function handleMessage(event) {
   if (type === 'update-scores') {
     teams.value = data
   } else if (type === 'update-figma') {
-    figmaUrl.value = data
+    if (typeof data === 'string') {
+      figmaUrl.value = data
+    } else {
+      figmaUrl.value = data.url
+      figmaClientId.value = data.clientId
+    }
   } else if (type === 'update-visibility') {
     scoreboardVisible.value = data.visible
     scoreboardWidth.value = data.width
@@ -125,25 +161,38 @@ function handleMessage(event) {
     setTimeout(() => { showTimerEnd.value = false }, 5000)
   } else if (type === 'navigate-slide') {
     navigateSlide(data)
+  } else if (type === 'restart-slide') {
+    restartSlide()
   }
 }
 
 function navigateSlide(direction) {
   const iframe = figmaIframe.value
   if (!iframe) return
-  const key = direction === 'next' ? 'ArrowRight' : 'ArrowLeft'
-  // 透過 postMessage 傳送鍵盤事件給 Figma iframe
-  iframe.contentWindow.postMessage(
-    { type: 'KEYBOARD_INPUT', key, keyCode: key === 'ArrowRight' ? 39 : 37 },
-    '*'
-  )
-  // 備用方案：focus iframe 後在 iframe element 上觸發鍵盤事件
-  iframe.focus()
-  iframe.dispatchEvent(new KeyboardEvent('keydown', { key, code: key, bubbles: true }))
+  // 使用 Figma 官方 Embed API postMessage 格式
+  const msgType = direction === 'next' ? 'NAVIGATE_FORWARD' : 'NAVIGATE_BACKWARD'
+  iframe.contentWindow.postMessage({ type: msgType }, FIGMA_ORIGIN)
+  console.log(`[Figma Embed API] 已發送 ${msgType}`)
+}
+
+function restartSlide() {
+  const iframe = figmaIframe.value
+  if (!iframe) return
+  // 使用 Figma 官方 Embed API postMessage 格式
+  iframe.contentWindow.postMessage({ type: 'RESTART' }, FIGMA_ORIGIN)
+  console.log(`[Figma Embed API] 已發送 ${msgType}`)
+}
+
+// 監聽 Figma iframe 傳回的 message
+function onFigmaMessage(event) {
+  if (event.origin === FIGMA_ORIGIN) {
+    console.log('[Figma event]', event.data)
+  }
 }
 
 onMounted(() => {
   channel.addEventListener('message', handleMessage)
+  window.addEventListener('message', onFigmaMessage)
 
   const saved = localStorage.getItem('cloud100-state')
   if (saved) {
@@ -158,6 +207,7 @@ onMounted(() => {
       }))
     }
     if (state.figmaUrl) figmaUrl.value = state.figmaUrl
+    if (state.figmaClientId) figmaClientId.value = state.figmaClientId
     if (state.scoreboardVisible !== undefined) scoreboardVisible.value = state.scoreboardVisible
     if (state.scoreboardWidth) scoreboardWidth.value = state.scoreboardWidth
   }
@@ -165,6 +215,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   channel.removeEventListener('message', handleMessage)
+  window.removeEventListener('message', onFigmaMessage)
   channel.close()
 })
 </script>
