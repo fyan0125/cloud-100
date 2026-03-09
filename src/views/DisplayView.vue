@@ -1,8 +1,12 @@
 <template>
   <div class="display-container">
     <!-- 左側比分面板 -->
-    <transition name="slide">
-      <div v-if="scoreboardVisible" class="scoreboard">
+    <transition
+      @before-enter="onBeforeEnter"
+      @enter="onEnter"
+      @leave="onLeave"
+    >
+      <div v-if="scoreboardVisible" class="scoreboard" :style="{ width: scoreboardWidth + 'px', minWidth: scoreboardWidth + 'px' }">
         <!-- 倒數計時 -->
         <div v-if="timerSeconds > 0 || timerRunning" class="timer-bar" :class="{ 'timer-warning': timerSeconds <= 10 }">
           {{ formatTime(timerSeconds) }}
@@ -25,6 +29,7 @@
     <div class="slide-area">
       <iframe
         v-if="figmaUrl"
+        ref="figmaIframe"
         :src="figmaEmbedUrl"
         class="figma-iframe"
         allowfullscreen
@@ -55,7 +60,9 @@ const teams = ref([
 ])
 
 const figmaUrl = ref('')
+const figmaIframe = ref(null)
 const scoreboardVisible = ref(true)
+const scoreboardWidth = ref(280)
 const timerSeconds = ref(0)
 const timerRunning = ref(false)
 const showTimerEnd = ref(false)
@@ -63,13 +70,34 @@ const showTimerEnd = ref(false)
 const figmaEmbedUrl = computed(() => {
   if (!figmaUrl.value) return ''
   const encoded = encodeURIComponent(figmaUrl.value)
-  return `https://www.figma.com/embed?embed_host=share&url=${encoded}`
+  return `https://www.figma.com/embed?embed_host=share&hide-ui=1&url=${encoded}`
 })
 
 function teamCardStyle(color) {
   return {
     background: `linear-gradient(135deg, ${color}88, ${color}33)`,
   }
+}
+
+function onBeforeEnter(el) {
+  el.style.marginLeft = `-${scoreboardWidth.value}px`
+  el.style.opacity = '0'
+}
+
+function onEnter(el, done) {
+  // force reflow
+  void el.offsetHeight
+  el.style.transition = 'margin-left 0.4s ease, opacity 0.4s ease'
+  el.style.marginLeft = '0'
+  el.style.opacity = '1'
+  el.addEventListener('transitionend', done, { once: true })
+}
+
+function onLeave(el, done) {
+  el.style.transition = 'margin-left 0.4s ease, opacity 0.4s ease'
+  el.style.marginLeft = `-${scoreboardWidth.value}px`
+  el.style.opacity = '0'
+  el.addEventListener('transitionend', done, { once: true })
 }
 
 function formatTime(s) {
@@ -87,14 +115,31 @@ function handleMessage(event) {
   } else if (type === 'update-figma') {
     figmaUrl.value = data
   } else if (type === 'update-visibility') {
-    scoreboardVisible.value = data
+    scoreboardVisible.value = data.visible
+    scoreboardWidth.value = data.width
   } else if (type === 'update-timer') {
     timerSeconds.value = data.seconds
     timerRunning.value = data.running
   } else if (type === 'timer-end') {
     showTimerEnd.value = true
     setTimeout(() => { showTimerEnd.value = false }, 5000)
+  } else if (type === 'navigate-slide') {
+    navigateSlide(data)
   }
+}
+
+function navigateSlide(direction) {
+  const iframe = figmaIframe.value
+  if (!iframe) return
+  const key = direction === 'next' ? 'ArrowRight' : 'ArrowLeft'
+  // 透過 postMessage 傳送鍵盤事件給 Figma iframe
+  iframe.contentWindow.postMessage(
+    { type: 'KEYBOARD_INPUT', key, keyCode: key === 'ArrowRight' ? 39 : 37 },
+    '*'
+  )
+  // 備用方案：focus iframe 後在 iframe element 上觸發鍵盤事件
+  iframe.focus()
+  iframe.dispatchEvent(new KeyboardEvent('keydown', { key, code: key, bubbles: true }))
 }
 
 onMounted(() => {
@@ -114,6 +159,7 @@ onMounted(() => {
     }
     if (state.figmaUrl) figmaUrl.value = state.figmaUrl
     if (state.scoreboardVisible !== undefined) scoreboardVisible.value = state.scoreboardVisible
+    if (state.scoreboardWidth) scoreboardWidth.value = state.scoreboardWidth
   }
 })
 
@@ -127,7 +173,7 @@ onUnmounted(() => {
 .display-container {
   display: flex;
   height: 100vh;
-  background: #0a0a1a;
+  background: #000;
   color: #fff;
   position: relative;
 }
@@ -139,20 +185,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: #111128;
-  border-right: 2px solid #2a2a4a;
-}
-
-/* 進出動畫 */
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.4s ease;
-}
-
-.slide-enter-from,
-.slide-leave-to {
-  margin-left: -280px;
-  opacity: 0;
+  background: #000;
 }
 
 /* 倒數計時 */

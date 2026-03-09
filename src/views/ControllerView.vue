@@ -13,6 +13,10 @@
           @input="sendFigmaUrl"
         />
       </div>
+      <div class="slide-nav">
+        <button class="nav-btn" @click="navigateSlide('prev')">&#9664; 上一頁</button>
+        <button class="nav-btn" @click="navigateSlide('next')">下一頁 &#9654;</button>
+      </div>
     </div>
 
     <!-- 顯示控制 -->
@@ -21,6 +25,17 @@
         <input type="checkbox" v-model="scoreboardVisible" @change="sendVisibility" />
         顯示左側計分板
       </label>
+      <div v-if="scoreboardVisible" class="width-control">
+        <label>寬度：{{ scoreboardWidth }}px</label>
+        <input
+          type="range"
+          v-model.number="scoreboardWidth"
+          min="180"
+          max="600"
+          step="10"
+          @input="sendVisibility"
+        />
+      </div>
     </div>
 
     <!-- 倒數計時控制 -->
@@ -105,6 +120,7 @@ const teams = ref([
 
 const figmaUrl = ref('')
 const scoreboardVisible = ref(true)
+const scoreboardWidth = ref(280)
 
 // 計時器
 const timerSeconds = ref(0)
@@ -125,8 +141,15 @@ function sendFigmaUrl() {
   saveState()
 }
 
+function navigateSlide(direction) {
+  channel.postMessage({ type: 'navigate-slide', data: direction })
+}
+
 function sendVisibility() {
-  channel.postMessage({ type: 'update-visibility', data: scoreboardVisible.value })
+  channel.postMessage({
+    type: 'update-visibility',
+    data: { visible: scoreboardVisible.value, width: scoreboardWidth.value },
+  })
   saveState()
 }
 
@@ -209,6 +232,7 @@ function saveState() {
       teams: teams.value,
       figmaUrl: figmaUrl.value,
       scoreboardVisible: scoreboardVisible.value,
+      scoreboardWidth: scoreboardWidth.value,
       nextId,
     })
   )
@@ -228,6 +252,7 @@ onMounted(() => {
     }
     if (state.figmaUrl) figmaUrl.value = state.figmaUrl
     if (state.scoreboardVisible !== undefined) scoreboardVisible.value = state.scoreboardVisible
+    if (state.scoreboardWidth) scoreboardWidth.value = state.scoreboardWidth
     if (state.nextId) nextId = state.nextId
   }
 })
@@ -271,6 +296,33 @@ h1 {
   box-sizing: border-box;
 }
 
+.slide-nav {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #555;
+  border-radius: 8px;
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  background: #2a2a4e;
+  border-color: #3498db;
+}
+
+.nav-btn:active {
+  transform: scale(0.97);
+}
+
 /* 顯示/隱藏 */
 .toggle-row label {
   display: flex;
@@ -279,6 +331,23 @@ h1 {
   font-size: 0.95rem;
   color: #444;
   cursor: pointer;
+}
+
+.width-control {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.width-control label {
+  font-size: 0.85rem;
+  color: #666;
+  min-width: 80px;
+}
+
+.width-control input[type="range"] {
+  flex: 1;
 }
 
 .toggle-row input[type="checkbox"] {
