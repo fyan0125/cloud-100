@@ -38,14 +38,29 @@
         <div class="card-body toggle-row">
           <label>
             <input type="checkbox" v-model="scoreboardVisible" @change="sendVisibility" />
-            顯示左側計分板
+            顯示計分板
           </label>
+          <div v-if="scoreboardVisible" class="layout-control">
+            <label class="layout-label">排版</label>
+            <div class="layout-options">
+              <button
+                v-for="opt in layoutOptions"
+                :key="opt.value"
+                :class="['layout-btn', { active: layout === opt.value }]"
+                @click="layout = opt.value; sendVisibility()"
+                :title="opt.label"
+              >
+                <span class="layout-icon" v-html="opt.icon"></span>
+                <span class="layout-text">{{ opt.label }}</span>
+              </button>
+            </div>
+          </div>
           <div v-if="scoreboardVisible" class="width-control">
-            <label>寬度：{{ scoreboardWidth }}px</label>
+            <label>{{ layout === 'top' ? '高度' : '寬度' }}：{{ scoreboardWidth }}px</label>
             <input
               type="range"
               v-model.number="scoreboardWidth"
-              min="180"
+              min="110"
               max="600"
               step="10"
               @input="sendVisibility"
@@ -133,17 +148,24 @@ const DEFAULT_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '
 let nextId = 6
 
 const teams = ref([
-  { id: 1, name: '第一隊', score: 0, color: '#e74c3c' },
-  { id: 2, name: '第二隊', score: 0, color: '#3498db' },
-  { id: 3, name: '第三隊', score: 0, color: '#2ecc71' },
-  { id: 4, name: '第四隊', score: 0, color: '#f39c12' },
-  { id: 5, name: '第五隊', score: 0, color: '#9b59b6' },
+  { id: 1, name: '一', score: 0, color: '#e74c3c' },
+  { id: 2, name: '二', score: 0, color: '#3498db' },
+  { id: 3, name: '三', score: 0, color: '#2ecc71' },
+  { id: 4, name: '四', score: 0, color: '#f39c12' },
+  { id: 5, name: '五', score: 0, color: '#9b59b6' },
 ])
 
-const figmaUrl = ref('')
-const figmaClientId = ref('')
+const figmaUrl = ref('https://www.figma.com/deck/RAuvyQ0LQNgZsO7nJNd0MC')
+const figmaClientId = ref('lMz39R1GmNKC4w9RXdjVHx')
 const scoreboardVisible = ref(true)
 const scoreboardWidth = ref(280)
+const layout = ref('left')
+
+const layoutOptions = [
+  { value: 'left', label: '左', icon: '&#9664;&#9724;' },
+  { value: 'right', label: '右', icon: '&#9724;&#9654;' },
+  { value: 'top', label: '上', icon: '&#9650;<br>&#9724;' },
+]
 
 // 計時器
 const timerSeconds = ref(0)
@@ -178,7 +200,7 @@ function restartSlide() {
 function sendVisibility() {
   channel.postMessage({
     type: 'update-visibility',
-    data: { visible: scoreboardVisible.value, width: scoreboardWidth.value },
+    data: { visible: scoreboardVisible.value, width: scoreboardWidth.value, layout: layout.value },
   })
   saveState()
 }
@@ -199,7 +221,7 @@ function addTeam() {
   const colorIndex = teams.value.length % DEFAULT_COLORS.length
   teams.value.push({
     id: nextId++,
-    name: `第${teams.value.length + 1}隊`,
+    name: `${teams.value.length + 1}`,
     score: 0,
     color: DEFAULT_COLORS[colorIndex],
   })
@@ -264,6 +286,7 @@ function saveState() {
       figmaClientId: figmaClientId.value,
       scoreboardVisible: scoreboardVisible.value,
       scoreboardWidth: scoreboardWidth.value,
+      layout: layout.value,
       nextId,
     })
   )
@@ -285,12 +308,14 @@ onMounted(() => {
     if (state.figmaClientId) figmaClientId.value = state.figmaClientId
     if (state.scoreboardVisible !== undefined) scoreboardVisible.value = state.scoreboardVisible
     if (state.scoreboardWidth) scoreboardWidth.value = state.scoreboardWidth
+    if (state.layout) layout.value = state.layout
     if (state.nextId) nextId = state.nextId
   }
 })
 
 onUnmounted(() => {
   clearInterval(timerInterval)
+  sendFigmaUrl() // 讓 DisplayView 知道 Figma 連結被清空了
   channel.close()
 })
 </script>
@@ -404,6 +429,67 @@ h1 {
 .toggle-row input[type="checkbox"] {
   width: 18px;
   height: 18px;
+}
+
+.layout-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.layout-label {
+  font-size: 0.85rem;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.layout-options {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.layout-btn {
+  flex: 1;
+  padding: 6px 4px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  transition: all 0.2s;
+}
+
+.layout-btn.active {
+  border-color: #3498db;
+  background: #ebf5fb;
+}
+
+.layout-btn:hover {
+  border-color: #3498db;
+}
+
+.layout-icon {
+  font-size: 0.55rem;
+  line-height: 1.1;
+  color: #666;
+}
+
+.layout-btn.active .layout-icon {
+  color: #3498db;
+}
+
+.layout-text {
+  font-size: 0.7rem;
+  color: #666;
+}
+
+.layout-btn.active .layout-text {
+  color: #3498db;
+  font-weight: 600;
 }
 
 .width-control {

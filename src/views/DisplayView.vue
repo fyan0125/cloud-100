@@ -1,20 +1,15 @@
 <template>
-  <div class="display-container">
-    <!-- 左側比分面板 -->
-    <transition
-      @before-enter="onBeforeEnter"
-      @enter="onEnter"
-      @leave="onLeave"
-    >
-      <div v-if="scoreboardVisible" class="scoreboard" :style="{ width: scoreboardWidth + 'px', minWidth: scoreboardWidth + 'px' }">
-        <!-- 倒數計時 -->
-        <div v-if="timerSeconds > 0 || timerRunning" class="timer-bar" :class="{ 'timer-warning': timerSeconds <= 10 }">
-          {{ formatTime(timerSeconds) }}
-        </div>
-
-        <h2 class="scoreboard-title">隊伍比分</h2>
+  <div class="display-container" :class="'layout-' + layout">
+    <!-- 上方區塊 -->
+    <!-- layout: top → 計時器 + 計分板 -->
+    <div v-if="scoreboardVisible && layout === 'top'" class="scoreboard scoreboard-top" :style="{ height: scoreboardWidth + 'px' }">
+      <div v-if="timerSeconds > 0 || timerRunning" class="timer-bar" :class="{ 'timer-warning': timerSeconds <= 10 }">
+        {{ formatTime(timerSeconds) }}
+      </div>
+      <h2 class="scoreboard-title">隊伍比分</h2>
+      <div class="teams-horizontal">
         <div
-          v-for="team in teams"
+          v-for="team in rankedTeams"
           :key="team.id"
           class="team-card"
           :style="teamCardStyle(team.color)"
@@ -23,20 +18,76 @@
           <span class="team-score">{{ team.score }}</span>
         </div>
       </div>
-    </transition>
+    </div>
 
-    <!-- 右側 Figma Slides -->
-    <div class="slide-area">
-      <iframe
-        v-if="figmaEmbedUrl"
-        ref="figmaIframe"
-        :src="figmaEmbedUrl"
-        class="figma-iframe"
-        allowfullscreen
-      ></iframe>
-      <div v-else class="placeholder">
-        <p>請在控制器中輸入 Figma 連結與 Client ID</p>
+    <div class="main-row">
+      <!-- 左側計分板（layout: left） -->
+      <transition
+        @before-enter="onBeforeEnter"
+        @enter="onEnter"
+        @leave="onLeave"
+      >
+        <div
+          v-if="scoreboardVisible && layout === 'left'"
+          class="scoreboard scoreboard-side"
+          :style="{ width: scoreboardWidth + 'px', minWidth: scoreboardWidth + 'px' }"
+        >
+          <div v-if="timerSeconds > 0 || timerRunning" class="timer-bar" :class="{ 'timer-warning': timerSeconds <= 10 }">
+            {{ formatTime(timerSeconds) }}
+          </div>
+          <h2 class="scoreboard-title">隊伍比分</h2>
+          <div
+            v-for="team in rankedTeams"
+            :key="team.id"
+            class="team-card"
+            :style="teamCardStyle(team.color)"
+          >
+            <span class="team-name">{{ team.name }}</span>
+            <span class="team-score">{{ team.score }}</span>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Figma Slides -->
+      <div class="slide-area">
+        <iframe
+          v-if="figmaEmbedUrl"
+          ref="figmaIframe"
+          :src="figmaEmbedUrl"
+          class="figma-iframe"
+          allowfullscreen
+        ></iframe>
+        <div v-else class="placeholder">
+          <p>請在控制器中輸入 Figma 連結與 Client ID</p>
+        </div>
       </div>
+
+      <!-- 右側計分板（layout: right） -->
+      <transition
+        @before-enter="onBeforeEnterRight"
+        @enter="onEnterRight"
+        @leave="onLeaveRight"
+      >
+        <div
+          v-if="scoreboardVisible && layout === 'right'"
+          class="scoreboard scoreboard-side"
+          :style="{ width: scoreboardWidth + 'px', minWidth: scoreboardWidth + 'px' }"
+        >
+          <div v-if="timerSeconds > 0 || timerRunning" class="timer-bar" :class="{ 'timer-warning': timerSeconds <= 10 }">
+            {{ formatTime(timerSeconds) }}
+          </div>
+          <h2 class="scoreboard-title">隊伍比分</h2>
+          <div
+            v-for="team in rankedTeams"
+            :key="team.id"
+            class="team-card"
+            :style="teamCardStyle(team.color)"
+          >
+            <span class="team-name">{{ team.name }}</span>
+            <span class="team-score">{{ team.score }}</span>
+          </div>
+        </div>
+      </transition>
     </div>
 
     <!-- 全螢幕按鈕 -->
@@ -67,12 +118,17 @@ const teams = ref([
   { id: 5, name: '第五隊', score: 0, color: '#9b59b6' },
 ])
 
+const rankedTeams = computed(() =>
+  [...teams.value].sort((a, b) => b.score - a.score)
+)
+
 const figmaUrl = ref('')
 const figmaClientId = ref('')
 const figmaIframe = ref(null)
 const scoreboardVisible = ref(true)
 const isFullscreen = ref(false)
 const scoreboardWidth = ref(280)
+const layout = ref('left')
 const timerSeconds = ref(0)
 const timerRunning = ref(false)
 const showTimerEnd = ref(false)
@@ -139,6 +195,27 @@ function onLeave(el, done) {
   el.addEventListener('transitionend', done, { once: true })
 }
 
+// 右側進出動畫
+function onBeforeEnterRight(el) {
+  el.style.marginRight = `-${scoreboardWidth.value}px`
+  el.style.opacity = '0'
+}
+
+function onEnterRight(el, done) {
+  void el.offsetHeight
+  el.style.transition = 'margin-right 0.4s ease, opacity 0.4s ease'
+  el.style.marginRight = '0'
+  el.style.opacity = '1'
+  el.addEventListener('transitionend', done, { once: true })
+}
+
+function onLeaveRight(el, done) {
+  el.style.transition = 'margin-right 0.4s ease, opacity 0.4s ease'
+  el.style.marginRight = `-${scoreboardWidth.value}px`
+  el.style.opacity = '0'
+  el.addEventListener('transitionend', done, { once: true })
+}
+
 function formatTime(s) {
   const m = Math.floor(s / 60)
   const sec = s % 60
@@ -162,6 +239,7 @@ function handleMessage(event) {
   } else if (type === 'update-visibility') {
     scoreboardVisible.value = data.visible
     scoreboardWidth.value = data.width
+    if (data.layout) layout.value = data.layout
   } else if (type === 'update-timer') {
     timerSeconds.value = data.seconds
     timerRunning.value = data.running
@@ -232,6 +310,7 @@ onMounted(() => {
     if (state.figmaClientId) figmaClientId.value = state.figmaClientId
     if (state.scoreboardVisible !== undefined) scoreboardVisible.value = state.scoreboardVisible
     if (state.scoreboardWidth) scoreboardWidth.value = state.scoreboardWidth
+    if (state.layout) layout.value = state.layout
   }
 })
 
@@ -246,10 +325,17 @@ onUnmounted(() => {
 <style scoped>
 .display-container {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   background: #000;
   color: #fff;
   position: relative;
+}
+
+.main-row {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 .fullscreen-btn {
@@ -276,13 +362,39 @@ onUnmounted(() => {
 }
 
 .scoreboard {
-  width: 280px;
-  min-width: 280px;
-  padding: 24px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   background: #000;
+}
+
+.scoreboard-side {
+  width: 280px;
+  min-width: 280px;
+  overflow-y: auto;
+}
+
+.scoreboard-top {
+  width: 100%;
+  overflow: hidden;
+  padding: 12px 24px;
+}
+
+.scoreboard-top .scoreboard-title {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+}
+
+.teams-horizontal {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.teams-horizontal .team-card {
+  min-width: 160px;
+  flex-shrink: 0;
 }
 
 /* 倒數計時 */
@@ -311,7 +423,7 @@ onUnmounted(() => {
 
 .scoreboard-title {
   text-align: center;
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   margin: 0 0 8px;
   color: #aab;
   letter-spacing: 4px;
@@ -319,11 +431,11 @@ onUnmounted(() => {
 
 .team-card {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 16px 20px;
+  padding: 12px 20px;
   border-radius: 12px;
-  font-size: 1.1rem;
+  font-size: 2rem;
   transition: transform 0.3s;
 }
 
@@ -336,7 +448,7 @@ onUnmounted(() => {
 }
 
 .team-score {
-  font-size: 2rem;
+  font-size: 3.5rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
