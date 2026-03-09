@@ -39,6 +39,14 @@
       </div>
     </div>
 
+    <!-- 全螢幕按鈕 -->
+    <button
+      v-if="!isFullscreen"
+      class="fullscreen-btn"
+      @click="toggleFullscreen"
+      title="全螢幕"
+    >&#x26F6;</button>
+
     <!-- 計時結束提示 -->
     <transition name="fade">
       <div v-if="showTimerEnd" class="timer-end-overlay" @click="showTimerEnd = false">
@@ -63,6 +71,7 @@ const figmaUrl = ref('')
 const figmaClientId = ref('')
 const figmaIframe = ref(null)
 const scoreboardVisible = ref(true)
+const isFullscreen = ref(false)
 const scoreboardWidth = ref(280)
 const timerSeconds = ref(0)
 const timerRunning = ref(false)
@@ -74,7 +83,7 @@ const figmaEmbedUrl = computed(() => {
   // 沒有 clientId 就用舊的 embed 方式（不支援換頁控制）
   if (!figmaClientId.value) {
     const encoded = encodeURIComponent(figmaUrl.value)
-    return `https://www.figma.com/embed?embed_host=share&url=${encoded}`
+    return `https://www.figma.com/embed?embed_host=share&url=${encoded}&hide-ui=1`
   }
   // 有 clientId：轉成 embed.figma.com/proto/ 格式
   return buildFigmaEmbedApiUrl(figmaUrl.value, figmaClientId.value)
@@ -88,7 +97,7 @@ function buildFigmaEmbedApiUrl(url, clientId) {
     if (!match) {
       // fallback: 用舊的 embed 方式
       const encoded = encodeURIComponent(url)
-      return `https://www.figma.com/embed?embed_host=share&url=${encoded}&client-id=${clientId}`
+      return `https://www.figma.com/embed?embed_host=share&url=${encoded}&client-id=${clientId}&hide-ui=1`
     }
     const fileKey = match[2]
     // 取得 node-id 等參數
@@ -166,6 +175,14 @@ function handleMessage(event) {
   }
 }
 
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen()
+  } else {
+    document.exitFullscreen()
+  }
+}
+
 function navigateSlide(direction) {
   const iframe = figmaIframe.value
   if (!iframe) return
@@ -190,9 +207,14 @@ function onFigmaMessage(event) {
   }
 }
 
+function onFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+}
+
 onMounted(() => {
   channel.addEventListener('message', handleMessage)
   window.addEventListener('message', onFigmaMessage)
+  document.addEventListener('fullscreenchange', onFullscreenChange)
 
   const saved = localStorage.getItem('cloud100-state')
   if (saved) {
@@ -216,6 +238,7 @@ onMounted(() => {
 onUnmounted(() => {
   channel.removeEventListener('message', handleMessage)
   window.removeEventListener('message', onFigmaMessage)
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
   channel.close()
 })
 </script>
@@ -227,6 +250,29 @@ onUnmounted(() => {
   background: #000;
   color: #fff;
   position: relative;
+}
+
+.fullscreen-btn {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 1.3rem;
+  cursor: pointer;
+  z-index: 50;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreen-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .scoreboard {

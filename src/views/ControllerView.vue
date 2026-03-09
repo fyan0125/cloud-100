@@ -2,115 +2,127 @@
   <div class="controller">
     <h1>控制面板</h1>
 
-    <!-- Figma 連結設定 -->
-    <div class="section">
-      <h2>Figma Embed 設定</h2>
-      <div class="figma-input">
-        <input
-          v-model="figmaUrl"
-          type="text"
-          placeholder="貼上 Figma 連結（presenter / proto / design）..."
-          @input="sendFigmaUrl"
-        />
-      </div>
-      <div class="figma-input" style="margin-top: 8px;">
-        <input
-          v-model="figmaClientId"
-          type="text"
-          placeholder="Figma OAuth Client ID（用於 Embed API 控制換頁）"
-          @input="sendFigmaUrl"
-        />
-        <small class="hint">至 <a href="https://www.figma.com/developers/apps" target="_blank">Figma Developer</a> 建立 App 取得 Client ID</small>
-      </div>
-      <div class="slide-nav">
-        <button class="nav-btn" @click="navigateSlide('prev')">&#9664; 上一頁</button>
-        <button class="nav-btn" @click="navigateSlide('next')">下一頁 &#9654;</button>
-        <button class="nav-btn" @click="restartSlide()">重置</button>
-      </div>
-    </div>
-
-    <!-- 顯示控制 -->
-    <div class="section toggle-row">
-      <label>
-        <input type="checkbox" v-model="scoreboardVisible" @change="sendVisibility" />
-        顯示左側計分板
-      </label>
-      <div v-if="scoreboardVisible" class="width-control">
-        <label>寬度：{{ scoreboardWidth }}px</label>
-        <input
-          type="range"
-          v-model.number="scoreboardWidth"
-          min="180"
-          max="600"
-          step="10"
-          @input="sendVisibility"
-        />
-      </div>
-    </div>
-
-    <!-- 倒數計時控制 -->
-    <div class="section">
-      <h2>倒數計時</h2>
-      <div class="timer-presets">
-        <button v-for="m in [1, 2, 3, 5]" :key="m" @click="setTimer(m * 60)">{{ m }} min</button>
-        <div class="custom-timer">
-          <input v-model.number="customMinutes" type="number" min="0" placeholder="分" class="timer-num" />
-          <span>:</span>
-          <input v-model.number="customSeconds" type="number" min="0" max="59" placeholder="秒" class="timer-num" />
-          <button @click="setTimer((customMinutes || 0) * 60 + (customSeconds || 0))">設定</button>
-        </div>
-      </div>
-      <div class="timer-display">
-        <span class="timer-value">{{ formatTime(timerSeconds) }}</span>
-        <div class="timer-buttons">
-          <button @click="startTimer" :disabled="timerRunning || timerSeconds <= 0">開始</button>
-          <button @click="pauseTimer" :disabled="!timerRunning">暫停</button>
-          <button @click="resetTimer">重置</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 隊伍比分控制 -->
-    <div class="section">
-      <h2>隊伍比分</h2>
-      <div
-        v-for="(team, index) in teams"
-        :key="team.id"
-        class="team-row"
-        :style="{ background: team.color }"
-      >
-        <div class="team-top">
-          <input
-            v-model="team.name"
-            class="name-input"
-            @input="sendScores"
-          />
-          <input
-            v-model="team.color"
-            type="color"
-            class="color-picker"
-            @input="sendScores"
-          />
-          <button class="delete-btn" @click="removeTeam(index)" title="刪除隊伍">✕</button>
-        </div>
-        <div class="team-bottom">
-          <div class="score-controls">
-            <button @click="changeScore(index, -1)">−</button>
-            <span class="score">{{ team.score }}</span>
-            <button @click="changeScore(index, 1)">+</button>
+    <div class="grid">
+      <!-- Figma 連結設定 -->
+      <div class="card">
+        <h2>Figma Embed 設定</h2>
+        <div class="card-body">
+          <div class="figma-input">
+            <input
+              v-model="figmaUrl"
+              type="text"
+              placeholder="貼上 Figma 連結（presenter / proto / design）..."
+              @input="sendFigmaUrl"
+            />
           </div>
-          <input
-            v-model.number="team.score"
-            type="number"
-            class="score-input"
-            @input="sendScores"
-          />
+          <div class="figma-input">
+            <input
+              v-model="figmaClientId"
+              type="text"
+              placeholder="Figma OAuth Client ID"
+              @input="sendFigmaUrl"
+            />
+            <small class="hint">至 <a href="https://www.figma.com/developers/apps" target="_blank">Figma Developer</a> 建立 App 取得</small>
+          </div>
+          <div class="slide-nav">
+            <button class="nav-btn" @click="navigateSlide('prev')">&#9664; 上一頁</button>
+            <button class="nav-btn" @click="navigateSlide('next')">下一頁 &#9654;</button>
+            <button class="nav-btn" @click="restartSlide()">重置</button>
+          </div>
         </div>
       </div>
-      <button class="add-btn" @click="addTeam">+ 新增隊伍</button>
-    </div>
 
-    <button class="reset-btn" @click="resetAll">全部歸零</button>
+      <!-- 顯示控制 -->
+      <div class="card">
+        <h2>顯示設定</h2>
+        <div class="card-body toggle-row">
+          <label>
+            <input type="checkbox" v-model="scoreboardVisible" @change="sendVisibility" />
+            顯示左側計分板
+          </label>
+          <div v-if="scoreboardVisible" class="width-control">
+            <label>寬度：{{ scoreboardWidth }}px</label>
+            <input
+              type="range"
+              v-model.number="scoreboardWidth"
+              min="180"
+              max="600"
+              step="10"
+              @input="sendVisibility"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 倒數計時控制 -->
+      <div class="card">
+        <h2>倒數計時</h2>
+        <div class="card-body">
+          <div class="timer-presets">
+            <button v-for="m in [1, 2, 3, 5]" :key="m" @click="setTimer(m * 60)">{{ m }} min</button>
+          </div>
+          <div class="custom-timer">
+            <input v-model.number="customMinutes" type="number" min="0" placeholder="分" class="timer-num" />
+            <span>:</span>
+            <input v-model.number="customSeconds" type="number" min="0" max="59" placeholder="秒" class="timer-num" />
+            <button @click="setTimer((customMinutes || 0) * 60 + (customSeconds || 0))">設定</button>
+          </div>
+          <div class="timer-display">
+            <span class="timer-value">{{ formatTime(timerSeconds) }}</span>
+            <div class="timer-buttons">
+              <button @click="startTimer" :disabled="timerRunning || timerSeconds <= 0">開始</button>
+              <button @click="pauseTimer" :disabled="!timerRunning">暫停</button>
+              <button @click="resetTimer">重置</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 隊伍比分控制 -->
+      <div class="card card-full">
+        <h2>隊伍比分</h2>
+        <div class="card-body">
+          <div class="teams-grid">
+            <div
+              v-for="(team, index) in teams"
+              :key="team.id"
+              class="team-row"
+              :style="{ background: team.color }"
+            >
+              <div class="team-top">
+                <input
+                  v-model="team.name"
+                  class="name-input"
+                  @input="sendScores"
+                />
+                <input
+                  v-model="team.color"
+                  type="color"
+                  class="color-picker"
+                  @input="sendScores"
+                />
+                <button class="delete-btn" @click="removeTeam(index)" title="刪除隊伍">✕</button>
+              </div>
+              <div class="team-bottom">
+                <div class="score-controls">
+                  <button @click="changeScore(index, -1)">−</button>
+                  <span class="score">{{ team.score }}</span>
+                  <button @click="changeScore(index, 1)">+</button>
+                </div>
+                <input
+                  v-model.number="team.score"
+                  type="number"
+                  class="score-input"
+                  @input="sendScores"
+                />
+              </div>
+            </div>
+          </div>
+          <button class="add-btn" @click="addTeam">+ 新增隊伍</button>
+          <button class="reset-btn" @click="resetAll">全部歸零</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -285,41 +297,67 @@ onUnmounted(() => {
 
 <style scoped>
 .controller {
-  max-width: 520px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 24px 16px;
   font-family: system-ui, sans-serif;
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   color: #333;
+  font-size: 1.5rem;
 }
 
-.section {
-  margin-bottom: 28px;
+/* Grid 排版 */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
-.section h2 {
-  font-size: 1rem;
-  color: #666;
-  margin-bottom: 12px;
+.card {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
+.card h2 {
+  font-size: 0.9rem;
+  color: #fff;
+  background: #2c3e50;
+  margin: 0;
+  padding: 10px 16px;
+  letter-spacing: 1px;
+}
+
+.card-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card-full {
+  grid-column: 1 / -1;
+}
+
+/* Figma */
 .figma-input input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border: 2px solid #ddd;
   border-radius: 8px;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   box-sizing: border-box;
 }
 
 .hint {
   display: block;
-  margin-top: 4px;
-  font-size: 0.8rem;
+  margin-top: 2px;
+  font-size: 0.75rem;
   color: #999;
 }
 
@@ -329,18 +367,17 @@ h1 {
 
 .slide-nav {
   display: flex;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 6px;
 }
 
 .nav-btn {
   flex: 1;
-  padding: 10px;
+  padding: 8px;
   border: 2px solid #555;
   border-radius: 8px;
   background: #1a1a2e;
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -354,25 +391,29 @@ h1 {
   transform: scale(0.97);
 }
 
-/* 顯示/隱藏 */
+/* 顯示設定 */
 .toggle-row label {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #444;
   cursor: pointer;
 }
 
+.toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
 .width-control {
-  margin-top: 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .width-control label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #666;
   min-width: 80px;
 }
@@ -381,26 +422,20 @@ h1 {
   flex: 1;
 }
 
-.toggle-row input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-}
-
 /* 計時器 */
 .timer-presets {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 6px;
 }
 
 .timer-presets > button {
-  padding: 6px 16px;
+  flex: 1;
+  padding: 6px;
   border: 2px solid #3498db;
   border-radius: 8px;
   background: #fff;
   color: #3498db;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -417,18 +452,18 @@ h1 {
 }
 
 .custom-timer span {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #333;
 }
 
 .timer-num {
-  width: 48px;
-  padding: 6px 4px;
+  width: 44px;
+  padding: 5px 4px;
   border: 2px solid #ddd;
   border-radius: 6px;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .timer-num::-webkit-inner-spin-button,
@@ -437,12 +472,12 @@ h1 {
 }
 
 .custom-timer button {
-  padding: 6px 12px;
+  padding: 5px 10px;
   border: 2px solid #3498db;
   border-radius: 8px;
   background: #fff;
   color: #3498db;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
 }
 
@@ -454,14 +489,14 @@ h1 {
 .timer-display {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
+  gap: 12px;
+  padding: 10px 14px;
   background: #1a1a2e;
   border-radius: 10px;
 }
 
 .timer-value {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 800;
   color: #fff;
   font-variant-numeric: tabular-nums;
@@ -470,14 +505,14 @@ h1 {
 
 .timer-buttons {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .timer-buttons button {
-  padding: 6px 14px;
+  padding: 5px 12px;
   border: none;
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
   color: #fff;
   background: #555;
@@ -493,9 +528,14 @@ h1 {
 .timer-buttons button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* 隊伍 */
+.teams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+
 .team-row {
-  padding: 12px 16px;
-  margin-bottom: 8px;
+  padding: 10px 14px;
   border-radius: 10px;
   color: #fff;
 }
@@ -503,24 +543,25 @@ h1 {
 .team-top {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .team-bottom {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .name-input {
   flex: 1;
+  min-width: 0;
   background: rgba(255, 255, 255, 0.25);
   border: none;
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 5px 8px;
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .name-input::placeholder {
@@ -528,28 +569,30 @@ h1 {
 }
 
 .color-picker {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-radius: 6px;
   padding: 0;
   cursor: pointer;
   background: none;
+  flex-shrink: 0;
 }
 
 .delete-btn {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.3);
   color: #fff;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
+  flex-shrink: 0;
 }
 
 .delete-btn:hover {
@@ -559,22 +602,23 @@ h1 {
 .score-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .score-controls button {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.3);
   color: #fff;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
+  flex-shrink: 0;
 }
 
 .score-controls button:hover {
@@ -582,21 +626,21 @@ h1 {
 }
 
 .score {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 700;
-  min-width: 36px;
+  min-width: 32px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
 .score-input {
-  width: 60px;
+  width: 50px;
   background: rgba(255, 255, 255, 0.25);
   border: none;
   border-radius: 6px;
-  padding: 6px 8px;
+  padding: 5px 6px;
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   text-align: center;
 }
 
@@ -608,13 +652,12 @@ h1 {
 .add-btn {
   display: block;
   width: 100%;
-  padding: 10px;
-  margin-top: 4px;
+  padding: 8px;
   background: #fff;
   border: 2px dashed #bbb;
   border-radius: 10px;
   color: #888;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -627,17 +670,53 @@ h1 {
 .reset-btn {
   display: block;
   width: 100%;
-  padding: 12px;
+  padding: 10px;
+  margin-top: 4px;
   background: #e74c3c;
   color: #fff;
   border: none;
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .reset-btn:hover {
   background: #c0392b;
+}
+
+/* RWD */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-full {
+    grid-column: 1;
+  }
+
+  .teams-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .controller {
+    padding: 16px 10px;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+  }
+
+  .timer-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .slide-nav {
+    flex-direction: column;
+  }
 }
 </style>
